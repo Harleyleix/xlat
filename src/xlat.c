@@ -342,6 +342,31 @@ void xlat_process_usb_hid_event(void)
             }
             break;
 
+        case HID_ITF_PROTOCOL_NONE: {
+            // Generic HID device (e.g. game controller / gamepad)
+            if (xlat_mode_get() != XLAT_MODE_CONTROLLER) {
+                goto out;
+            }
+            uint8_t* hid_raw_data = hevt->report;
+
+            // Check if the report ID is matching what's expected
+            if ((xlat_report_id_get() != 0) && (hid_raw_data[0] != xlat_report_id_get())) {
+                goto out;
+            }
+
+            // Detect any button press using the button_mask (same as mouse click)
+            for (uint8_t i = (xlat_report_id_get() ? 1 : 0); i < hevt->report_size; i++) {
+                if (((hid_raw_data[i] ^ prev_report[i]) & hid_raw_data[i] & xlat_button_mask_get()[i])) {
+                    last_usb_timestamp_us = hevt->timestamp;
+                    calculate_gpio_to_usb_time();
+                    printf("[%5lu] controller button @ %lu - byte %d\n", xTaskGetTickCount(), hevt->timestamp, i);
+                    break;
+                }
+            }
+            memcpy(prev_report, hid_raw_data, sizeof(prev_report));
+            break;
+        }
+
         default:
             break;
     }
@@ -552,6 +577,14 @@ void xlat_parse_hid_descriptor(uint8_t *desc, size_t desc_size, uint8_t itf_prot
                 printf("Protocol %d does not match selected XLAT mode (%d)\n", itf_protocol, HID_ITF_PROTOCOL_KEYBOARD);
                 return;
             }
+            break;
+        case XLAT_MODE_CONTROLLER:
+            // Controller/gamepad: accept any HID device with buttons
+            if (*xlat_button_bits_get() > 0) {
+                printf("Controller button mask already found, skipping this descriptor\n");
+                return;
+            }
+            // Accept any protocol (controllers use HID_ITF_PROTOCOL_NONE)
             break;
         default:
             return;
