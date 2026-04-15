@@ -613,7 +613,7 @@ void xlat_clear_locations(void)
 //   status       Print current settings
 //   info         Print device info
 
-static void xlat_send_status(void)
+void xlat_send_status(void)
 {
     char buf[128];
     // Send mode
@@ -656,7 +656,7 @@ static void xlat_send_status(void)
     vcp_writestr(buf);
 }
 
-static void xlat_send_device_info(void)
+void xlat_send_device_info(void)
 {
     char buf[128];
     snprintf(buf, sizeof(buf), "device:manufacturer=%s\n",
