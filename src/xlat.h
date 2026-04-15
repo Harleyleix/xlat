@@ -43,6 +43,7 @@ typedef enum xlat_mode {
     XLAT_MODE_MOUSE_CLICK = 0,
     XLAT_MODE_MOUSE_MOTION,
     XLAT_MODE_KEYBOARD,
+    XLAT_MODE_CONTROLLER,
 } xlat_mode_t;
 
 extern volatile bool xlat_initialized;
