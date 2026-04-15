@@ -377,11 +377,10 @@ void gfx_xlat_gui(void)
     // Load theme
     new_theme_init_and_set();
 
-    // Draw logo - top left, scaled 200x97 (keep ratio from 130x63)
+    // Draw logo - top left, original size
     lv_obj_t * logo = lv_img_create(lv_scr_act());
     lv_img_set_src(logo, &xlat_logo);
-    lv_img_set_zoom(logo, 395);  // 200/130 * 256 = 395
-    lv_obj_align(logo, LV_ALIGN_TOP_LEFT, 5, 3);
+    lv_obj_align(logo, LV_ALIGN_TOP_LEFT, 12, 3);
 
     ///////////////////////////
     // DEVICE INFO TOP RIGHT //

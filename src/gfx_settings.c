@@ -144,7 +144,7 @@ void gfx_settings_create_page(lv_obj_t *previous_screen)
     lv_obj_align_to(mode_label, mode_info, LV_ALIGN_OUT_BOTTOM_LEFT, 0, 30);
 
     mode_dropdown = lv_dropdown_create(tab_mode);
-    lv_dropdown_set_options(mode_dropdown, "Mouse: Click\nMouse: Motion\nKeyboard: Keypress");
+    lv_dropdown_set_options(mode_dropdown, "Mouse: Click\nMouse: Motion\nKeyboard: Keypress\nController: Button");
     lv_obj_set_width(mode_dropdown, DROPDOWN_WIDTH);
     lv_obj_align_to(mode_dropdown, mode_label, LV_ALIGN_OUT_RIGHT_MID, 10, 0);
     lv_obj_add_event_cb(mode_dropdown, event_handler, LV_EVENT_VALUE_CHANGED, NULL);
