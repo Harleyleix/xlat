@@ -30,7 +30,6 @@
 #include "hardware_config.h"
 #include "stdio_glue.h"
 #include "class/hid/hid.h"
-#include "usb_task.h"
 
 // LUFA HID Parser
 #define __INCLUDE_FROM_USB_DRIVER // NOLINT(*-reserved-identifier)
@@ -343,6 +342,26 @@ void xlat_process_usb_hid_event(void)
             }
             break;
 
+        case HID_ITF_PROTOCOL_NONE:
+            // Controller/Gamepad mode (uses NONE protocol)
+            if (xlat_mode_get() != XLAT_MODE_CONTROLLER) {
+                goto out;
+            }
+            {
+                uint8_t* hid_raw_data = hevt->report;
+                // Check for any button press using button_mask
+                for (uint8_t i = (xlat_report_id_get() ? 1 : 0); i < hevt->report_size; i++) {
+                    if (((hid_raw_data[i] ^ prev_report[i]) & hid_raw_data[i] & xlat_button_mask_get()[i])) {
+                        last_usb_timestamp_us = hevt->timestamp;
+                        calculate_gpio_to_usb_time();
+                        printf("[%5lu] controller button @ %lu - byte %d\n", xTaskGetTickCount(), hevt->timestamp, i);
+                        break;
+                    }
+                }
+                memcpy(prev_report, hid_raw_data, sizeof(prev_report));
+            }
+            break;
+
         default:
             break;
     }
@@ -600,152 +619,6 @@ void xlat_clear_locations(void)
     xlat_keyboard_usage_page_found_set(false);
 }
 
-
-// ─── PC Command Handler ────────────────────────────────────────────────────
-// Commands from PC via UART:
-//   mode=0..3    Set mode (0=mouse_click, 1=mouse_motion, 2=keyboard, 3=controller)
-//   edge=0..1    Set edge (0=falling, 1=rising)
-//   debounce=N   Set debounce in ms (20,50,100,200,500,1000)
-//   bias=0..2    Set bias (0=nopull, 1=pullup, 2=pulldown)
-//   level=0..1   Set trigger level (0=low, 1=high)
-//   output=6|11  Set trigger output pin
-//   interval=N   Set trigger interval ms (100-1000)
-//   status       Print current settings
-//   info         Print device info
-
-static void xlat_send_status(void)
-{
-    char buf[128];
-    // Send mode
-    const char *mode_str = "unknown";
-    switch (xlat_mode_get()) {
-        case XLAT_MODE_MOUSE_CLICK:   mode_str = "Mouse: Click"; break;
-        case XLAT_MODE_MOUSE_MOTION:  mode_str = "Mouse: Motion"; break;
-        case XLAT_MODE_KEYBOARD:      mode_str = "Keyboard: Keypress"; break;
-        case XLAT_MODE_CONTROLLER:    mode_str = "Controller: Button"; break;
-        default: break;
-    }
-    snprintf(buf, sizeof(buf), "status:mode=%s\n", mode_str);
-    vcp_writestr(buf);
-
-    snprintf(buf, sizeof(buf), "status:edge=%s\n",
-             hw_config_input_trigger_is_rising_edge() ? "Rising" : "Falling");
-    vcp_writestr(buf);
-
-    snprintf(buf, sizeof(buf), "status:debounce=%lums\n",
-             xlat_gpio_irq_holdoff_us_get() / 1000);
-    vcp_writestr(buf);
-
-    uint32_t bias = hw_config_input_bias_get();
-    const char *bias_str = "No Pull";
-    if (bias == INPUT_BIAS_PULLUP) bias_str = "Pull Up";
-    else if (bias == INPUT_BIAS_PULLDOWN) bias_str = "Pull Down";
-    snprintf(buf, sizeof(buf), "status:bias=%s\n", bias_str);
-    vcp_writestr(buf);
-
-    snprintf(buf, sizeof(buf), "status:level=%s\n",
-             xlat_auto_trigger_level_is_high() ? "High" : "Low");
-    vcp_writestr(buf);
-
-    snprintf(buf, sizeof(buf), "status:output=D%d\n",
-             xlat_auto_trigger_output_get());
-    vcp_writestr(buf);
-
-    snprintf(buf, sizeof(buf), "status:interval=%lums\n",
-             xlat_auto_trigger_interval_ms_get());
-    vcp_writestr(buf);
-}
-
-static void xlat_send_device_info(void)
-{
-    char buf[128];
-    snprintf(buf, sizeof(buf), "device:manufacturer=%s\n",
-             usb_host_get_manuf_string());
-    vcp_writestr(buf);
-    snprintf(buf, sizeof(buf), "device:product=%s\n",
-             usb_host_get_product_string());
-    vcp_writestr(buf);
-    snprintf(buf, sizeof(buf), "device:vidpid=%s\n",
-             usb_host_get_vidpid_string());
-    vcp_writestr(buf);
-}
-
-static void xlat_process_pc_command(char *cmd)
-{
-    char buf[64];
-
-    if (strncmp(cmd, "mode=", 5) == 0) {
-        int val = atoi(cmd + 5);
-        if (val >= 0 && val <= 3) {
-            xlat_mode_set((enum xlat_mode)val);
-            xlat_clear_locations();
-            gfx_event_send(GFX_EVENT_MODE_CHANGED, 0);
-            snprintf(buf, sizeof(buf), "ok:mode=%d\n", val);
-            vcp_writestr(buf);
-        }
-    } else if (strncmp(cmd, "edge=", 5) == 0) {
-        int val = atoi(cmd + 5);
-        hw_config_input_trigger_set_edge(val);
-        snprintf(buf, sizeof(buf), "ok:edge=%d\n", val);
-        vcp_writestr(buf);
-    } else if (strncmp(cmd, "debounce=", 9) == 0) {
-        uint32_t ms = (uint32_t)atoi(cmd + 9);
-        xlat_gpio_irq_holdoff_us_set(ms * 1000);
-        snprintf(buf, sizeof(buf), "ok:debounce=%lu\n", ms);
-        vcp_writestr(buf);
-    } else if (strncmp(cmd, "bias=", 5) == 0) {
-        int val = atoi(cmd + 5);
-        uint32_t bias = INPUT_BIAS_NOPULL;
-        if (val == 1) bias = INPUT_BIAS_PULLUP;
-        else if (val == 2) bias = INPUT_BIAS_PULLDOWN;
-        hw_config_input_bias(bias);
-        snprintf(buf, sizeof(buf), "ok:bias=%d\n", val);
-        vcp_writestr(buf);
-    } else if (strncmp(cmd, "level=", 6) == 0) {
-        int val = atoi(cmd + 6);
-        xlat_auto_trigger_level_set(val != 0);
-        snprintf(buf, sizeof(buf), "ok:level=%d\n", val);
-        vcp_writestr(buf);
-    } else if (strncmp(cmd, "output=", 7) == 0) {
-        int pin = atoi(cmd + 7);
-        if (pin == 6 || pin == 11) {
-            xlat_auto_trigger_output_set((uint8_t)pin);
-            snprintf(buf, sizeof(buf), "ok:output=%d\n", pin);
-            vcp_writestr(buf);
-        }
-    } else if (strncmp(cmd, "interval=", 9) == 0) {
-        uint32_t ms = (uint32_t)atoi(cmd + 9);
-        xlat_auto_trigger_interval_ms_set(ms);
-        snprintf(buf, sizeof(buf), "ok:interval=%lu\n", ms);
-        vcp_writestr(buf);
-    } else if (strcmp(cmd, "status") == 0) {
-        xlat_send_status();
-    } else if (strcmp(cmd, "info") == 0) {
-        xlat_send_device_info();
-    }
-}
-
-// UART RX command buffer
-static char rx_buf[128];
-static uint8_t rx_pos = 0;
-
-void xlat_process_pc_uart(void)
-{
-    char c;
-    while (vcp_read(&c, 1) == 1) {
-        if (c == '\n' || c == '\r') {
-            if (rx_pos > 0) {
-                rx_buf[rx_pos] = '\0';
-                xlat_process_pc_command(rx_buf);
-                rx_pos = 0;
-            }
-        } else if (rx_pos < sizeof(rx_buf) - 1) {
-            rx_buf[rx_pos++] = c;
-        }
-    }
-}
-// ───────────────────────────────────────────────────────────────────────────
-
 void xlat_init(void)
 {
     // create timer
@@ -758,7 +631,6 @@ void xlat_init(void)
     char buf[50];
     snprintf(buf, sizeof(buf), "count;latency_us;avg_us;stdev_us\n");
     vcp_writestr(buf);
-    xlat_send_status();
 }
 
 /**
@@ -789,6 +661,5 @@ void xlat_task(void const * argument)
     /* Infinite loop */
     for (;;) {
         xlat_process_usb_hid_event(); // blocking
-        xlat_process_pc_uart();        // process PC commands
     }
 }
