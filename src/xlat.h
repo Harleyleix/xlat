@@ -43,7 +43,6 @@ typedef enum xlat_mode {
     XLAT_MODE_MOUSE_CLICK = 0,
     XLAT_MODE_MOUSE_MOTION,
     XLAT_MODE_KEYBOARD,
-    XLAT_MODE_CONTROLLER,   // Game controller / gamepad button click
 } xlat_mode_t;
 
 extern volatile bool xlat_initialized;
@@ -81,5 +80,9 @@ void xlat_clear_locations(void);
 
 void xlat_auto_trigger_action(void);
 void xlat_auto_trigger_turn_off_action(void);
+
+void xlat_process_pc_uart(void);
+void xlat_send_status(void);
+void xlat_send_device_info(void);
 
 #endif //XLAT_H

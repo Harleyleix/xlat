@@ -19,6 +19,7 @@
 #include <stdlib.h>
 
 #include "gfx_main.h"
+#include "stdio_glue.h"
 
 #include <main.h>
 #include <usb_task.h>
@@ -527,6 +528,8 @@ void gfx_task(void const * argument)
 
             case GFX_EVENT_DEVICE_CONNECTED:
                 gfx_labels_update();
+                xlat_send_device_info();
+                xlat_send_status();
                 break;
 
             case GFX_EVENT_MODE_CHANGED:
@@ -534,6 +537,9 @@ void gfx_task(void const * argument)
                 break;
 
             case GFX_EVENT_DEVICE_DISCONNECTED:
+                vcp_writestr("device:product=No USB device found\n");
+                vcp_writestr("device:manufacturer=\n");
+                vcp_writestr("device:vidpid=\n");
                 auto_trigger_clear_timer(); // stop auto-trigger in case it's running
                 gfx_data_locations_label_set();
                 gfx_device_label_set("", "No USB device found", "");
