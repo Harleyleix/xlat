@@ -47,6 +47,7 @@ static lv_obj_t * chart;
 static lv_obj_t * latency_label;
 static lv_obj_t * productname_label;
 static lv_obj_t * manufacturer_label;
+static lv_obj_t * connection_label;
 static lv_obj_t * vidpid_label;
 static lv_obj_t * hid_data_locations_label;
 static lv_obj_t * mode_label;
@@ -90,7 +91,7 @@ void gfx_device_label_set(const char * manufacturer, const char * productname, c
     lv_label_set_text(manufacturer_label, tempstr);
     lv_obj_align_to(manufacturer_label, productname_label, LV_ALIGN_OUT_LEFT_BOTTOM, -5, 0);
 
-    sprintf(tempstr, "USB ID: %s", vidpid);
+    sprintf(tempstr, "USB ID: %s | %s", vidpid, usb_host_get_connection_type());
     lv_label_set_text(vidpid_label, tempstr);
     lv_obj_set_size(vidpid_label, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
     lv_obj_align_to(vidpid_label, productname_label, LV_ALIGN_OUT_BOTTOM_RIGHT, 0, 22);
@@ -350,6 +351,9 @@ void gfx_mode_label_set(void)
             break;
         case XLAT_MODE_KEYBOARD:
             mode_str = "KEY";
+            break;
+        case XLAT_MODE_CONTROLLER:
+            mode_str = "CONTROLLER";
             break;
         default:
             mode_str = "Unknown";

@@ -59,6 +59,7 @@ static void event_handler(lv_event_t* e)
         if (obj == edge_dropdown) {
             uint16_t sel = lv_dropdown_get_selected(obj);
             hw_config_input_trigger_set_edge(sel);
+            xlat_send_status();
         } else if (obj == bias_dropdown) {
             uint16_t sel = lv_dropdown_get_selected(obj);
             uint32_t bias;
@@ -69,6 +70,7 @@ static void event_handler(lv_event_t* e)
                 default: bias = INPUT_BIAS_NOPULL; break;
             }
             hw_config_input_bias(bias);
+            xlat_send_status();
         } else if (obj == debounce_dropdown) {
             uint16_t sel = lv_dropdown_get_selected(obj);
             uint32_t val = 100;
@@ -82,32 +84,40 @@ static void event_handler(lv_event_t* e)
                 default: break;
             }
             xlat_gpio_irq_holdoff_us_set(val * 1000);
+            xlat_send_status();
         } else if (obj == trigger_dropdown) {
             uint16_t sel = lv_dropdown_get_selected(obj);
             xlat_auto_trigger_level_set(sel);
+            xlat_send_status();
         } else if (obj == mode_dropdown) {
             uint16_t sel = lv_dropdown_get_selected(obj);
             if (sel == 0) {
                 xlat_mode_set(XLAT_MODE_MOUSE_CLICK);
                 gfx_event_send(GFX_EVENT_MODE_CHANGED, 0);
+                xlat_send_status();
             } else if (sel == 1) {
                 xlat_mode_set(XLAT_MODE_MOUSE_MOTION);
                 gfx_event_send(GFX_EVENT_MODE_CHANGED, 0);
+                xlat_send_status();
             } else if (sel == 2) {
                 xlat_mode_set(XLAT_MODE_KEYBOARD);
                 gfx_event_send(GFX_EVENT_MODE_CHANGED, 0);
+                xlat_send_status();
             } else if (sel == 3) {
                 xlat_mode_set(XLAT_MODE_CONTROLLER);
                 gfx_event_send(GFX_EVENT_MODE_CHANGED, 0);
+                xlat_send_status();
             }
         } else if (obj == trigger_interval_dropdown) {
             uint16_t sel = lv_dropdown_get_selected(obj);
             uint32_t interval = (sel + 1) * 100; // Convert selection to milliseconds (100-1000ms)
             xlat_auto_trigger_interval_ms_set(interval);
+            xlat_send_status();
         } else if (obj == trigger_output_dropdown) {
             uint16_t sel = lv_dropdown_get_selected(obj);
             uint8_t pin = (sel == 0) ? 6 : 11; // D6 or D11
             xlat_auto_trigger_output_set(pin);
+            xlat_send_status();
         }
     }
 }
