@@ -19,6 +19,7 @@
 #include <stdlib.h>
 
 #include "gfx_main.h"
+#include "stdio_glue.h"
 
 #include <main.h>
 #include <usb_task.h>
@@ -47,7 +48,6 @@ static lv_obj_t * chart;
 static lv_obj_t * latency_label;
 static lv_obj_t * productname_label;
 static lv_obj_t * manufacturer_label;
-
 static lv_obj_t * vidpid_label;
 static lv_obj_t * hid_data_locations_label;
 static lv_obj_t * mode_label;
@@ -381,7 +381,7 @@ void gfx_xlat_gui(void)
     // Load theme
     new_theme_init_and_set();
 
-    // Draw logo - top left, original size
+    // Draw logo
     lv_obj_t * logo = lv_img_create(lv_scr_act());
     lv_img_set_src(logo, &xlat_logo);
     lv_obj_align(logo, LV_ALIGN_TOP_LEFT, 12, 3);
@@ -531,6 +531,7 @@ void gfx_task(void const * argument)
 
             case GFX_EVENT_DEVICE_CONNECTED:
                 gfx_labels_update();
+                // Note: xlat_send_device_info/status called from xlat_task, not here
                 break;
 
             case GFX_EVENT_MODE_CHANGED:
