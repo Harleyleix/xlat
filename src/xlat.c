@@ -601,6 +601,8 @@ void xlat_clear_locations(void)
 }
 
 
+extern UART_HandleTypeDef huart1;
+
 // ─── PC Command Handler ────────────────────────────────────────────────────
 // Commands from PC via UART:
 //   mode=0..3    Set mode (0=mouse_click, 1=mouse_motion, 2=keyboard, 3=controller)
@@ -731,8 +733,14 @@ static uint8_t rx_pos = 0;
 
 void xlat_process_pc_uart(void)
 {
+    // Use non-blocking read with timeout=0
     char c;
-    while (vcp_read(&c, 1) == 1) {
+    uint8_t byte;
+    // Try to read up to 32 bytes per call, non-blocking
+    for (int i = 0; i < 32; i++) {
+        if (HAL_UART_Receive(&huart1, (uint8_t*)&c, 1, 0) != HAL_OK) {
+            break;  // No more data available, return immediately
+        }
         if (c == '\n' || c == '\r') {
             if (rx_pos > 0) {
                 rx_buf[rx_pos] = '\0';
