@@ -38,14 +38,88 @@ lv_obj_t *mode_dropdown;
 lv_obj_t *trigger_output_dropdown;
 lv_obj_t *trigger_interval_dropdown;
 
+#define GFX_SCREEN_ANIM_TIME_MS          220
+#define GFX_BTN_PRESS_ANIM_TIME_MS        70
+#define GFX_BTN_RELEASE_ANIM_TIME_MS     120
+#define GFX_BTN_PRESS_OFFSET_Y             2
+#define GFX_BTN_PRESS_SQUEEZE_W           -6
+#define GFX_BTN_PRESS_SQUEEZE_H           -4
+
+static void gfx_btn_anim_set_translate_y(void * obj, int32_t value)
+{
+    lv_obj_set_style_translate_y((lv_obj_t *)obj, (lv_coord_t)value, 0);
+}
+
+static void gfx_btn_anim_set_transform_width(void * obj, int32_t value)
+{
+    lv_obj_set_style_transform_width((lv_obj_t *)obj, (lv_coord_t)value, 0);
+}
+
+static void gfx_btn_anim_set_transform_height(void * obj, int32_t value)
+{
+    lv_obj_set_style_transform_height((lv_obj_t *)obj, (lv_coord_t)value, 0);
+}
+
+static void gfx_btn_start_style_anim(lv_obj_t * btn, lv_anim_exec_xcb_t exec_cb,
+                                     int32_t from, int32_t to, uint32_t duration)
+{
+    lv_anim_t a;
+
+    lv_anim_del(btn, exec_cb);
+    lv_anim_init(&a);
+    lv_anim_set_var(&a, btn);
+    lv_anim_set_exec_cb(&a, exec_cb);
+    lv_anim_set_values(&a, from, to);
+    lv_anim_set_time(&a, duration);
+    lv_anim_set_path_cb(&a, lv_anim_path_ease_out);
+    lv_anim_start(&a);
+}
+
+static void gfx_btn_set_pressed_state(lv_obj_t * btn, bool pressed)
+{
+    if (pressed) {
+        gfx_btn_start_style_anim(btn, gfx_btn_anim_set_translate_y, 0,
+                                 GFX_BTN_PRESS_OFFSET_Y, GFX_BTN_PRESS_ANIM_TIME_MS);
+        gfx_btn_start_style_anim(btn, gfx_btn_anim_set_transform_width, 0,
+                                 GFX_BTN_PRESS_SQUEEZE_W, GFX_BTN_PRESS_ANIM_TIME_MS);
+        gfx_btn_start_style_anim(btn, gfx_btn_anim_set_transform_height, 0,
+                                 GFX_BTN_PRESS_SQUEEZE_H, GFX_BTN_PRESS_ANIM_TIME_MS);
+    } else {
+        gfx_btn_start_style_anim(btn, gfx_btn_anim_set_translate_y,
+                                 GFX_BTN_PRESS_OFFSET_Y, 0, GFX_BTN_RELEASE_ANIM_TIME_MS);
+        gfx_btn_start_style_anim(btn, gfx_btn_anim_set_transform_width,
+                                 GFX_BTN_PRESS_SQUEEZE_W, 0, GFX_BTN_RELEASE_ANIM_TIME_MS);
+        gfx_btn_start_style_anim(btn, gfx_btn_anim_set_transform_height,
+                                 GFX_BTN_PRESS_SQUEEZE_H, 0, GFX_BTN_RELEASE_ANIM_TIME_MS);
+    }
+}
+
+static void gfx_btn_press_anim_event_cb(lv_event_t * e)
+{
+    lv_event_code_t code = lv_event_get_code(e);
+    lv_obj_t * btn = lv_event_get_target(e);
+
+    if (code == LV_EVENT_PRESSED) {
+        gfx_btn_set_pressed_state(btn, true);
+    } else if (code == LV_EVENT_RELEASED || code == LV_EVENT_PRESS_LOST) {
+        gfx_btn_set_pressed_state(btn, false);
+    }
+}
+
+static void gfx_btn_enable_press_anim(lv_obj_t * btn)
+{
+    lv_obj_add_event_cb(btn, gfx_btn_press_anim_event_cb, LV_EVENT_ALL, NULL);
+}
+
 // Event handler for the back button
 static void back_btn_event_handler(lv_event_t* e)
 {
     lv_event_code_t code = lv_event_get_code(e);
     if (code == LV_EVENT_CLICKED) {
         if (prev_screen) {
-            lv_scr_load(prev_screen);
-            lv_obj_del(settings_screen);
+            lv_scr_load_anim(prev_screen, LV_SCR_LOAD_ANIM_MOVE_RIGHT,
+                             GFX_SCREEN_ANIM_TIME_MS, 0, true);
+            settings_screen = NULL;
         }
     }
 }
@@ -126,7 +200,8 @@ void gfx_settings_create_page(lv_obj_t *previous_screen)
 {
     prev_screen = previous_screen;
     settings_screen = lv_obj_create(NULL);
-    lv_scr_load(settings_screen);
+    lv_scr_load_anim(settings_screen, LV_SCR_LOAD_ANIM_MOVE_LEFT,
+                     GFX_SCREEN_ANIM_TIME_MS, 0, false);
 
     // Create a tabview
     lv_obj_t *tabview = lv_tabview_create(settings_screen, LV_DIR_TOP, 30);
@@ -249,6 +324,7 @@ void gfx_settings_create_page(lv_obj_t *previous_screen)
     lv_obj_set_size(btn_back, GFX_BTN_WIDTH, GFX_BTN_HEIGHT);
     lv_obj_align(btn_back, LV_ALIGN_BOTTOM_LEFT, 10, -5);
     lv_obj_add_event_cb(btn_back, back_btn_event_handler, LV_EVENT_CLICKED, NULL);
+    gfx_btn_enable_press_anim(btn_back);
     lv_obj_t *back_label = lv_label_create(btn_back);
     lv_label_set_text(back_label, "BACK");
     lv_obj_center(back_label);

@@ -64,6 +64,114 @@ static void chart_reset(void);
 
 LV_IMG_DECLARE(xlat_logo);
 
+#define GFX_LOGO_MAX_WIDTH   130
+#define GFX_LOGO_MAX_HEIGHT  63
+#define GFX_LOGO_OFFSET_X    12
+#define GFX_LOGO_OFFSET_Y    3
+
+static lv_obj_t * gfx_create_logo(lv_obj_t * parent)
+{
+    lv_obj_t * logo;
+    uint32_t zoom_x;
+    uint32_t zoom_y;
+    uint32_t zoom;
+
+    logo = lv_img_create(parent);
+    lv_img_set_src(logo, &xlat_logo);
+
+    zoom_x = ((uint32_t)GFX_LOGO_MAX_WIDTH * 256U) / xlat_logo.header.w;
+    zoom_y = ((uint32_t)GFX_LOGO_MAX_HEIGHT * 256U) / xlat_logo.header.h;
+    zoom = (zoom_x < zoom_y) ? zoom_x : zoom_y;
+
+    if (zoom == 0U) {
+        zoom = 256U;
+    }
+
+    /* Keep the logo aspect ratio intact.  We only use uniform zoom and
+     * explicitly set the final size from the source image dimensions. */
+    lv_img_set_zoom(logo, zoom);
+    lv_obj_set_size(logo,
+                    (lv_coord_t)(((uint32_t)xlat_logo.header.w * zoom) / 256U),
+                    (lv_coord_t)(((uint32_t)xlat_logo.header.h * zoom) / 256U));
+    lv_obj_clear_flag(logo, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_align(logo, LV_ALIGN_TOP_LEFT, GFX_LOGO_OFFSET_X, GFX_LOGO_OFFSET_Y);
+
+    return logo;
+}
+
+#define GFX_SCREEN_ANIM_TIME_MS          220
+#define GFX_BTN_PRESS_ANIM_TIME_MS        70
+#define GFX_BTN_RELEASE_ANIM_TIME_MS     120
+#define GFX_BTN_PRESS_OFFSET_Y             2
+#define GFX_BTN_PRESS_SQUEEZE_W           -6
+#define GFX_BTN_PRESS_SQUEEZE_H           -4
+
+static void gfx_btn_anim_set_translate_y(void * obj, int32_t value)
+{
+    lv_obj_set_style_translate_y((lv_obj_t *)obj, (lv_coord_t)value, 0);
+}
+
+static void gfx_btn_anim_set_transform_width(void * obj, int32_t value)
+{
+    lv_obj_set_style_transform_width((lv_obj_t *)obj, (lv_coord_t)value, 0);
+}
+
+static void gfx_btn_anim_set_transform_height(void * obj, int32_t value)
+{
+    lv_obj_set_style_transform_height((lv_obj_t *)obj, (lv_coord_t)value, 0);
+}
+
+static void gfx_btn_start_style_anim(lv_obj_t * btn, lv_anim_exec_xcb_t exec_cb,
+                                     int32_t from, int32_t to, uint32_t duration)
+{
+    lv_anim_t a;
+
+    lv_anim_del(btn, exec_cb);
+    lv_anim_init(&a);
+    lv_anim_set_var(&a, btn);
+    lv_anim_set_exec_cb(&a, exec_cb);
+    lv_anim_set_values(&a, from, to);
+    lv_anim_set_time(&a, duration);
+    lv_anim_set_path_cb(&a, lv_anim_path_ease_out);
+    lv_anim_start(&a);
+}
+
+static void gfx_btn_set_pressed_state(lv_obj_t * btn, bool pressed)
+{
+    if (pressed) {
+        gfx_btn_start_style_anim(btn, gfx_btn_anim_set_translate_y, 0,
+                                 GFX_BTN_PRESS_OFFSET_Y, GFX_BTN_PRESS_ANIM_TIME_MS);
+        gfx_btn_start_style_anim(btn, gfx_btn_anim_set_transform_width, 0,
+                                 GFX_BTN_PRESS_SQUEEZE_W, GFX_BTN_PRESS_ANIM_TIME_MS);
+        gfx_btn_start_style_anim(btn, gfx_btn_anim_set_transform_height, 0,
+                                 GFX_BTN_PRESS_SQUEEZE_H, GFX_BTN_PRESS_ANIM_TIME_MS);
+    } else {
+        gfx_btn_start_style_anim(btn, gfx_btn_anim_set_translate_y,
+                                 GFX_BTN_PRESS_OFFSET_Y, 0, GFX_BTN_RELEASE_ANIM_TIME_MS);
+        gfx_btn_start_style_anim(btn, gfx_btn_anim_set_transform_width,
+                                 GFX_BTN_PRESS_SQUEEZE_W, 0, GFX_BTN_RELEASE_ANIM_TIME_MS);
+        gfx_btn_start_style_anim(btn, gfx_btn_anim_set_transform_height,
+                                 GFX_BTN_PRESS_SQUEEZE_H, 0, GFX_BTN_RELEASE_ANIM_TIME_MS);
+    }
+}
+
+static void gfx_btn_press_anim_event_cb(lv_event_t * e)
+{
+    lv_event_code_t code = lv_event_get_code(e);
+    lv_obj_t * btn = lv_event_get_target(e);
+
+    if (code == LV_EVENT_PRESSED) {
+        gfx_btn_set_pressed_state(btn, true);
+    } else if (code == LV_EVENT_RELEASED || code == LV_EVENT_PRESS_LOST) {
+        gfx_btn_set_pressed_state(btn, false);
+    }
+}
+
+static void gfx_btn_enable_press_anim(lv_obj_t * btn)
+{
+    lv_obj_add_event_cb(btn, gfx_btn_press_anim_event_cb, LV_EVENT_ALL, NULL);
+}
+
 static void latency_label_update(void)
 {
     lv_label_set_text_fmt(latency_label, "#%lu: %ldus, avg %ldus, stdev %ldus",
@@ -128,7 +236,7 @@ static void btn_settings_event_cb(lv_event_t * e)
     lv_event_code_t code = lv_event_get_code(e);
 
     if (code == LV_EVENT_CLICKED) {
-        // Create a new screen for settings
+        // Create a new screen for settings with a smooth slide transition
         gfx_settings_create_page(lv_scr_act());
     }
 }
@@ -381,10 +489,8 @@ void gfx_xlat_gui(void)
     // Load theme
     new_theme_init_and_set();
 
-    // Draw logo
-    lv_obj_t * logo = lv_img_create(lv_scr_act());
-    lv_img_set_src(logo, &xlat_logo);
-    lv_obj_align(logo, LV_ALIGN_TOP_LEFT, 12, 3);
+    // Draw logo without stretching it
+    gfx_create_logo(lv_scr_act());
 
     ///////////////////////////
     // DEVICE INFO TOP RIGHT //
@@ -413,6 +519,7 @@ void gfx_xlat_gui(void)
     lv_obj_align(clear_btn, LV_ALIGN_BOTTOM_LEFT, 10, -5);
     lv_obj_set_size(clear_btn, GFX_BTN_WIDTH, GFX_BTN_HEIGHT);
     lv_obj_add_event_cb(clear_btn, btn_clear_event_cb, LV_EVENT_CLICKED, NULL);
+    gfx_btn_enable_press_anim(clear_btn);
 
     // Reset button label
     lv_obj_t * reset_label = lv_label_create(clear_btn);
@@ -424,6 +531,7 @@ void gfx_xlat_gui(void)
     lv_obj_align_to(reboot_btn, clear_btn, LV_ALIGN_OUT_RIGHT_TOP, 10, 0);
     lv_obj_set_size(reboot_btn, GFX_BTN_WIDTH, GFX_BTN_HEIGHT);
     lv_obj_add_event_cb(reboot_btn, btn_reboot_event_cb, LV_EVENT_CLICKED, NULL);
+    gfx_btn_enable_press_anim(reboot_btn);
 
     // Reboot button label
     lv_obj_t * reboot_label = lv_label_create(reboot_btn);
@@ -435,6 +543,7 @@ void gfx_xlat_gui(void)
     lv_obj_align_to(settings_btn, reboot_btn, LV_ALIGN_OUT_RIGHT_TOP, 10, 0);
     lv_obj_set_size(settings_btn, GFX_BTN_WIDTH, GFX_BTN_HEIGHT);
     lv_obj_add_event_cb(settings_btn, btn_settings_event_cb, LV_EVENT_CLICKED, NULL);
+    gfx_btn_enable_press_anim(settings_btn);
 
     // Settings button label
     lv_obj_t * settings_label = lv_label_create(settings_btn);
@@ -446,6 +555,7 @@ void gfx_xlat_gui(void)
     lv_obj_align_to(trigger_btn, settings_btn, LV_ALIGN_OUT_RIGHT_TOP, 10, 0);
     lv_obj_set_size(trigger_btn, GFX_BTN_WIDTH, GFX_BTN_HEIGHT);
     lv_obj_add_event_cb(trigger_btn, btn_trigger_event_cb, LV_EVENT_CLICKED, NULL);
+    gfx_btn_enable_press_anim(trigger_btn);
 
     // Trigger button label
     trigger_label = lv_label_create(trigger_btn);
