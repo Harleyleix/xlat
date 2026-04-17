@@ -31,6 +31,7 @@
 #include "xlat.h"
 #include "xlat_config.h"
 #include "gfx_settings.h"
+#include "xlat_ui_palette.h"
 
 #define Y_CHART_SIZE_X 410
 #define Y_CHART_SIZE_Y 130
@@ -42,7 +43,7 @@
 #define Y_CHART_TICKS_MAJOR 6
 #define Y_CHART_TICKS_MINOR 2
 
-lv_color_t lv_color_lightblue = LV_COLOR_MAKE(0xa6, 0xd1, 0xd1);
+lv_color_t lv_color_lightblue = XLAT_UI_COLOR_ACCENT;
 
 static lv_obj_t * chart;
 static lv_obj_t * latency_label;
@@ -97,79 +98,6 @@ static lv_obj_t * gfx_create_logo(lv_obj_t * parent)
     lv_obj_align(logo, LV_ALIGN_TOP_LEFT, GFX_LOGO_OFFSET_X, GFX_LOGO_OFFSET_Y);
 
     return logo;
-}
-
-#define GFX_SCREEN_ANIM_TIME_MS          220
-#define GFX_BTN_PRESS_ANIM_TIME_MS        70
-#define GFX_BTN_RELEASE_ANIM_TIME_MS     120
-#define GFX_BTN_PRESS_OFFSET_Y             2
-#define GFX_BTN_PRESS_SQUEEZE_W           -6
-#define GFX_BTN_PRESS_SQUEEZE_H           -4
-
-static void gfx_btn_anim_set_translate_y(void * obj, int32_t value)
-{
-    lv_obj_set_style_translate_y((lv_obj_t *)obj, (lv_coord_t)value, 0);
-}
-
-static void gfx_btn_anim_set_transform_width(void * obj, int32_t value)
-{
-    lv_obj_set_style_transform_width((lv_obj_t *)obj, (lv_coord_t)value, 0);
-}
-
-static void gfx_btn_anim_set_transform_height(void * obj, int32_t value)
-{
-    lv_obj_set_style_transform_height((lv_obj_t *)obj, (lv_coord_t)value, 0);
-}
-
-static void gfx_btn_start_style_anim(lv_obj_t * btn, lv_anim_exec_xcb_t exec_cb,
-                                     int32_t from, int32_t to, uint32_t duration)
-{
-    lv_anim_t a;
-
-    lv_anim_del(btn, exec_cb);
-    lv_anim_init(&a);
-    lv_anim_set_var(&a, btn);
-    lv_anim_set_exec_cb(&a, exec_cb);
-    lv_anim_set_values(&a, from, to);
-    lv_anim_set_time(&a, duration);
-    lv_anim_set_path_cb(&a, lv_anim_path_ease_out);
-    lv_anim_start(&a);
-}
-
-static void gfx_btn_set_pressed_state(lv_obj_t * btn, bool pressed)
-{
-    if (pressed) {
-        gfx_btn_start_style_anim(btn, gfx_btn_anim_set_translate_y, 0,
-                                 GFX_BTN_PRESS_OFFSET_Y, GFX_BTN_PRESS_ANIM_TIME_MS);
-        gfx_btn_start_style_anim(btn, gfx_btn_anim_set_transform_width, 0,
-                                 GFX_BTN_PRESS_SQUEEZE_W, GFX_BTN_PRESS_ANIM_TIME_MS);
-        gfx_btn_start_style_anim(btn, gfx_btn_anim_set_transform_height, 0,
-                                 GFX_BTN_PRESS_SQUEEZE_H, GFX_BTN_PRESS_ANIM_TIME_MS);
-    } else {
-        gfx_btn_start_style_anim(btn, gfx_btn_anim_set_translate_y,
-                                 GFX_BTN_PRESS_OFFSET_Y, 0, GFX_BTN_RELEASE_ANIM_TIME_MS);
-        gfx_btn_start_style_anim(btn, gfx_btn_anim_set_transform_width,
-                                 GFX_BTN_PRESS_SQUEEZE_W, 0, GFX_BTN_RELEASE_ANIM_TIME_MS);
-        gfx_btn_start_style_anim(btn, gfx_btn_anim_set_transform_height,
-                                 GFX_BTN_PRESS_SQUEEZE_H, 0, GFX_BTN_RELEASE_ANIM_TIME_MS);
-    }
-}
-
-static void gfx_btn_press_anim_event_cb(lv_event_t * e)
-{
-    lv_event_code_t code = lv_event_get_code(e);
-    lv_obj_t * btn = lv_event_get_target(e);
-
-    if (code == LV_EVENT_PRESSED) {
-        gfx_btn_set_pressed_state(btn, true);
-    } else if (code == LV_EVENT_RELEASED || code == LV_EVENT_PRESS_LOST) {
-        gfx_btn_set_pressed_state(btn, false);
-    }
-}
-
-static void gfx_btn_enable_press_anim(lv_obj_t * btn)
-{
-    lv_obj_add_event_cb(btn, gfx_btn_press_anim_event_cb, LV_EVENT_ALL, NULL);
 }
 
 static void latency_label_update(void)
@@ -236,7 +164,7 @@ static void btn_settings_event_cb(lv_event_t * e)
     lv_event_code_t code = lv_event_get_code(e);
 
     if (code == LV_EVENT_CLICKED) {
-        // Create a new screen for settings with a smooth slide transition
+        // Create a new screen for settings
         gfx_settings_create_page(lv_scr_act());
     }
 }
@@ -401,17 +329,24 @@ static void new_theme_init_and_set(void)
 {
     // Initialize button style
     lv_style_init(&style_btn);
-    lv_style_set_bg_color(&style_btn, lv_color_white());
-    lv_style_set_text_color(&style_btn, lv_color_black());
-    lv_style_set_border_color(&style_btn, lv_color_lightblue);
+    lv_style_set_bg_color(&style_btn, XLAT_UI_COLOR_PANEL_ALT);
+    lv_style_set_bg_grad_color(&style_btn, XLAT_UI_COLOR_PANEL);
+    lv_style_set_bg_grad_dir(&style_btn, LV_GRAD_DIR_VER);
+    lv_style_set_text_color(&style_btn, XLAT_UI_COLOR_TEXT);
+    lv_style_set_border_color(&style_btn, XLAT_UI_COLOR_BORDER);
     lv_style_set_border_width(&style_btn, 1);
+    lv_style_set_radius(&style_btn, 10);
+    lv_style_set_shadow_width(&style_btn, 10);
+    lv_style_set_shadow_color(&style_btn, XLAT_UI_COLOR_ACCENT_SOFT);
+    lv_style_set_shadow_opa(&style_btn, LV_OPA_20);
 
     // Initialize chart style
     lv_style_init(&style_chart);
-    lv_style_set_bg_color(&style_chart, lv_color_black());
-    lv_style_set_border_color(&style_chart, lv_color_lightblue);
+    lv_style_set_bg_color(&style_chart, XLAT_UI_COLOR_PANEL);
+    lv_style_set_border_color(&style_chart, XLAT_UI_COLOR_BORDER);
     lv_style_set_border_width(&style_chart, 1);
-    lv_style_set_text_color(&style_chart, lv_color_white());
+    lv_style_set_radius(&style_chart, 10);
+    lv_style_set_text_color(&style_chart, XLAT_UI_COLOR_TEXT);
 
     /*Initialize the new theme from the current theme*/
     lv_theme_t * th_act = lv_disp_get_theme(NULL);
@@ -486,6 +421,8 @@ void gfx_xlat_gui(void)
     // Rotate display
     lv_disp_set_rotation(lv_disp_get_default(), LV_DISP_ROT_180);
 
+    xlat_ui_style_screen(lv_scr_act());
+
     // Load theme
     new_theme_init_and_set();
 
@@ -500,14 +437,18 @@ void gfx_xlat_gui(void)
     vidpid_label = lv_label_create(lv_scr_act());
     productname_label = lv_label_create(lv_scr_act());
     manufacturer_label = lv_label_create(lv_scr_act());
+    xlat_ui_style_label_muted(vidpid_label);
+    xlat_ui_style_label_muted(manufacturer_label);
     gfx_device_label_set("", "No USB device found", "");
 
     // HID data locations label
     hid_data_locations_label = lv_label_create(lv_scr_act());
+    xlat_ui_style_label_muted(hid_data_locations_label);
     gfx_data_locations_label_set();
 
     // Mode label
     mode_label = lv_label_create(lv_scr_act());
+    xlat_ui_style_label_muted(mode_label);
     gfx_mode_label_set();
 
     ///////////////////////////
@@ -519,7 +460,7 @@ void gfx_xlat_gui(void)
     lv_obj_align(clear_btn, LV_ALIGN_BOTTOM_LEFT, 10, -5);
     lv_obj_set_size(clear_btn, GFX_BTN_WIDTH, GFX_BTN_HEIGHT);
     lv_obj_add_event_cb(clear_btn, btn_clear_event_cb, LV_EVENT_CLICKED, NULL);
-    gfx_btn_enable_press_anim(clear_btn);
+    xlat_ui_style_button(clear_btn, XLAT_UI_COLOR_PANEL_ALT, XLAT_UI_COLOR_ACCENT);
 
     // Reset button label
     lv_obj_t * reset_label = lv_label_create(clear_btn);
@@ -531,7 +472,7 @@ void gfx_xlat_gui(void)
     lv_obj_align_to(reboot_btn, clear_btn, LV_ALIGN_OUT_RIGHT_TOP, 10, 0);
     lv_obj_set_size(reboot_btn, GFX_BTN_WIDTH, GFX_BTN_HEIGHT);
     lv_obj_add_event_cb(reboot_btn, btn_reboot_event_cb, LV_EVENT_CLICKED, NULL);
-    gfx_btn_enable_press_anim(reboot_btn);
+    xlat_ui_style_button(reboot_btn, XLAT_UI_COLOR_PANEL_ALT, XLAT_UI_COLOR_DANGER);
 
     // Reboot button label
     lv_obj_t * reboot_label = lv_label_create(reboot_btn);
@@ -543,7 +484,7 @@ void gfx_xlat_gui(void)
     lv_obj_align_to(settings_btn, reboot_btn, LV_ALIGN_OUT_RIGHT_TOP, 10, 0);
     lv_obj_set_size(settings_btn, GFX_BTN_WIDTH, GFX_BTN_HEIGHT);
     lv_obj_add_event_cb(settings_btn, btn_settings_event_cb, LV_EVENT_CLICKED, NULL);
-    gfx_btn_enable_press_anim(settings_btn);
+    xlat_ui_style_button(settings_btn, XLAT_UI_COLOR_PANEL_ALT, XLAT_UI_COLOR_ACCENT_SOFT);
 
     // Settings button label
     lv_obj_t * settings_label = lv_label_create(settings_btn);
@@ -555,7 +496,7 @@ void gfx_xlat_gui(void)
     lv_obj_align_to(trigger_btn, settings_btn, LV_ALIGN_OUT_RIGHT_TOP, 10, 0);
     lv_obj_set_size(trigger_btn, GFX_BTN_WIDTH, GFX_BTN_HEIGHT);
     lv_obj_add_event_cb(trigger_btn, btn_trigger_event_cb, LV_EVENT_CLICKED, NULL);
-    gfx_btn_enable_press_anim(trigger_btn);
+    xlat_ui_style_button(trigger_btn, XLAT_UI_COLOR_PANEL_ALT, XLAT_UI_COLOR_SUCCESS);
 
     // Trigger button label
     trigger_label = lv_label_create(trigger_btn);
@@ -565,13 +506,19 @@ void gfx_xlat_gui(void)
     // Latency label
     latency_label = lv_label_create(lv_scr_act());
     lv_label_set_text(latency_label, "Click to start measurement...");
+    xlat_ui_style_label_muted(latency_label);
     lv_obj_align_to(latency_label, chart, LV_ALIGN_OUT_TOP_MID, 0, 0);
 
     // Trigger ready label
     trigger_ready_cb = lv_checkbox_create(lv_scr_act());
     lv_checkbox_set_text(trigger_ready_cb, "READY");
     lv_obj_add_state(trigger_ready_cb, LV_STATE_CHECKED);
-    lv_obj_set_style_bg_color(trigger_ready_cb, lv_palette_main(LV_PALETTE_RED), 0);
+    lv_obj_set_style_text_color(trigger_ready_cb, XLAT_UI_COLOR_TEXT, 0);
+    lv_obj_set_style_pad_column(trigger_ready_cb, 6, 0);
+    lv_obj_set_style_bg_opa(trigger_ready_cb, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_border_opa(trigger_ready_cb, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_bg_color(trigger_ready_cb, XLAT_UI_COLOR_SUCCESS, LV_PART_INDICATOR | LV_STATE_CHECKED);
+    lv_obj_set_style_border_color(trigger_ready_cb, XLAT_UI_COLOR_SUCCESS, LV_PART_INDICATOR | LV_STATE_CHECKED);
     lv_obj_align(trigger_ready_cb, LV_ALIGN_BOTTOM_RIGHT, -10, -7);
 
 
@@ -579,7 +526,7 @@ void gfx_xlat_gui(void)
     // CHART //
     ///////////
     lv_chart_new(Y_CHART_RANGE);
-    lv_chart_add_cursor(chart, lv_color_white(), LV_DIR_TOP);
+    lv_chart_add_cursor(chart, XLAT_UI_COLOR_TEXT, LV_DIR_TOP);
     latency_measurements_clear();
 }
 

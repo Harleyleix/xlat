@@ -22,6 +22,7 @@
 #include "xlat.h"
 #include "xlat_config.h"
 #include "hardware_config.h"
+#include "xlat_ui_palette.h"
 
 // UI layout constants
 #define LABEL_WIDTH 180
@@ -109,6 +110,21 @@ static void gfx_btn_press_anim_event_cb(lv_event_t * e)
 static void gfx_btn_enable_press_anim(lv_obj_t * btn)
 {
     lv_obj_add_event_cb(btn, gfx_btn_press_anim_event_cb, LV_EVENT_ALL, NULL);
+}
+
+static void gfx_settings_style_label(lv_obj_t * label)
+{
+    lv_obj_set_style_text_color(label, XLAT_UI_COLOR_TEXT, 0);
+}
+
+static void gfx_settings_style_info_label(lv_obj_t * label)
+{
+    lv_obj_set_style_text_color(label, XLAT_UI_COLOR_TEXT_MUTED, 0);
+}
+
+static void gfx_settings_style_dropdown_widget(lv_obj_t * dd)
+{
+    xlat_ui_style_dropdown(dd);
 }
 
 // Event handler for the back button
@@ -200,6 +216,8 @@ void gfx_settings_create_page(lv_obj_t *previous_screen)
 {
     prev_screen = previous_screen;
     settings_screen = lv_obj_create(NULL);
+    xlat_ui_style_screen(settings_screen);
+    lv_obj_clear_flag(settings_screen, LV_OBJ_FLAG_SCROLLABLE);
     lv_scr_load_anim(settings_screen, LV_SCR_LOAD_ANIM_MOVE_LEFT,
                      GFX_SCREEN_ANIM_TIME_MS, 0, false);
 
@@ -207,11 +225,15 @@ void gfx_settings_create_page(lv_obj_t *previous_screen)
     lv_obj_t *tabview = lv_tabview_create(settings_screen, LV_DIR_TOP, 30);
     lv_obj_set_size(tabview, lv_disp_get_hor_res(NULL), lv_disp_get_ver_res(NULL) - 30);
     lv_obj_align(tabview, LV_ALIGN_TOP_MID, 0, 0);
+    xlat_ui_style_tabview(tabview);
 
     // Create 3 tabs
     lv_obj_t *tab_mode = lv_tabview_add_tab(tabview, "Mode");
     lv_obj_t *tab_detection = lv_tabview_add_tab(tabview, "Detection");
     lv_obj_t *tab_trigger = lv_tabview_add_tab(tabview, "Trigger");
+    xlat_ui_style_panel(tab_mode);
+    xlat_ui_style_panel(tab_detection);
+    xlat_ui_style_panel(tab_trigger);
 
     // Mode Tab Content
     // Add explanatory text for Mode tab first
@@ -220,11 +242,13 @@ void gfx_settings_create_page(lv_obj_t *previous_screen)
                                  "After changing the mode, you might need to re-plug the USB device.");
     lv_obj_set_style_text_align(mode_info, LV_TEXT_ALIGN_LEFT, 0);
     lv_obj_set_style_text_font(mode_info, &lv_font_montserrat_12, 0);
+    gfx_settings_style_info_label(mode_info);
     lv_obj_align(mode_info, LV_ALIGN_TOP_LEFT, 10, 10);
 
     // Then add the mode dropdown
     lv_obj_t *mode_label = lv_label_create(tab_mode);
     lv_label_set_text(mode_label, "Detection Mode:");
+    gfx_settings_style_label(mode_label);
     lv_obj_set_width(mode_label, LABEL_WIDTH);
     lv_obj_align_to(mode_label, mode_info, LV_ALIGN_OUT_BOTTOM_LEFT, 0, 30);
 
@@ -233,6 +257,7 @@ void gfx_settings_create_page(lv_obj_t *previous_screen)
     lv_obj_set_width(mode_dropdown, DROPDOWN_WIDTH);
     lv_obj_align_to(mode_dropdown, mode_label, LV_ALIGN_OUT_RIGHT_MID, 10, 0);
     lv_obj_add_event_cb(mode_dropdown, event_handler, LV_EVENT_VALUE_CHANGED, NULL);
+    gfx_settings_style_dropdown_widget(mode_dropdown);
 
     // Detection Tab Content
     // Add explanatory text for Detection tab first
@@ -240,11 +265,13 @@ void gfx_settings_create_page(lv_obj_t *previous_screen)
     lv_label_set_text(detection_info, "Configure the input signal detection.");
     lv_obj_set_style_text_align(detection_info, LV_TEXT_ALIGN_LEFT, 0);
     lv_obj_set_style_text_font(detection_info, &lv_font_montserrat_12, 0);
+    gfx_settings_style_info_label(detection_info);
     lv_obj_align(detection_info, LV_ALIGN_TOP_LEFT, 10, 10);
 
     // Then add the detection settings
     lv_obj_t *edge_label = lv_label_create(tab_detection);
     lv_label_set_text(edge_label, "Detection Edge:");
+    gfx_settings_style_label(edge_label);
     lv_obj_set_width(edge_label, LABEL_WIDTH);
     lv_obj_align_to(edge_label, detection_info, LV_ALIGN_OUT_BOTTOM_LEFT, 0, 30);
 
@@ -253,9 +280,11 @@ void gfx_settings_create_page(lv_obj_t *previous_screen)
     lv_obj_set_width(edge_dropdown, DROPDOWN_WIDTH);
     lv_obj_align_to(edge_dropdown, edge_label, LV_ALIGN_OUT_RIGHT_MID, 10, 0);
     lv_obj_add_event_cb(edge_dropdown, event_handler, LV_EVENT_VALUE_CHANGED, NULL);
+    gfx_settings_style_dropdown_widget(edge_dropdown);
 
     lv_obj_t *debounce_label = lv_label_create(tab_detection);
     lv_label_set_text(debounce_label, "Debounce Time:");
+    gfx_settings_style_label(debounce_label);
     lv_obj_set_width(debounce_label, LABEL_WIDTH);
     lv_obj_align_to(debounce_label, edge_label, LV_ALIGN_OUT_BOTTOM_LEFT, 0, 30);
 
@@ -264,9 +293,11 @@ void gfx_settings_create_page(lv_obj_t *previous_screen)
     lv_obj_set_width(debounce_dropdown, DROPDOWN_WIDTH);
     lv_obj_align_to(debounce_dropdown, debounce_label, LV_ALIGN_OUT_RIGHT_MID, 10, 0);
     lv_obj_add_event_cb(debounce_dropdown, event_handler, LV_EVENT_VALUE_CHANGED, NULL);
+    gfx_settings_style_dropdown_widget(debounce_dropdown);
 
     lv_obj_t *bias_label = lv_label_create(tab_detection);
     lv_label_set_text(bias_label, "Input Bias:");
+    gfx_settings_style_label(bias_label);
     lv_obj_set_width(bias_label, LABEL_WIDTH);
     lv_obj_align_to(bias_label, debounce_label, LV_ALIGN_OUT_BOTTOM_LEFT, 0, 30);
 
@@ -275,6 +306,7 @@ void gfx_settings_create_page(lv_obj_t *previous_screen)
     lv_obj_set_width(bias_dropdown, DROPDOWN_WIDTH);
     lv_obj_align_to(bias_dropdown, bias_label, LV_ALIGN_OUT_RIGHT_MID, 10, 0);
     lv_obj_add_event_cb(bias_dropdown, event_handler, LV_EVENT_VALUE_CHANGED, NULL);
+    gfx_settings_style_dropdown_widget(bias_dropdown);
 
     // Trigger Tab Content
     // Add explanatory text for Trigger tab first
@@ -282,11 +314,13 @@ void gfx_settings_create_page(lv_obj_t *previous_screen)
     lv_label_set_text(trigger_info, "Configure automatic trigger behavior.");
     lv_obj_set_style_text_align(trigger_info, LV_TEXT_ALIGN_LEFT, 0);
     lv_obj_set_style_text_font(trigger_info, &lv_font_montserrat_12, 0);
+    gfx_settings_style_info_label(trigger_info);
     lv_obj_align(trigger_info, LV_ALIGN_TOP_LEFT, 10, 10);
 
     // Then add the trigger settings
     lv_obj_t *trigger_level_label = lv_label_create(tab_trigger);
     lv_label_set_text(trigger_level_label, "Auto-trigger Level:");
+    gfx_settings_style_label(trigger_level_label);
     lv_obj_set_width(trigger_level_label, LABEL_WIDTH);
     lv_obj_align_to(trigger_level_label, trigger_info, LV_ALIGN_OUT_BOTTOM_LEFT, 0, 30);
 
@@ -295,9 +329,11 @@ void gfx_settings_create_page(lv_obj_t *previous_screen)
     lv_obj_set_width(trigger_dropdown, DROPDOWN_WIDTH);
     lv_obj_align_to(trigger_dropdown, trigger_level_label, LV_ALIGN_OUT_RIGHT_MID, 10, 0);
     lv_obj_add_event_cb(trigger_dropdown, event_handler, LV_EVENT_VALUE_CHANGED, NULL);
+    gfx_settings_style_dropdown_widget(trigger_dropdown);
 
     lv_obj_t *trigger_output_label = lv_label_create(tab_trigger);
     lv_label_set_text(trigger_output_label, "Auto-trigger Output:");
+    gfx_settings_style_label(trigger_output_label);
     lv_obj_set_width(trigger_output_label, LABEL_WIDTH);
     lv_obj_align_to(trigger_output_label, trigger_level_label, LV_ALIGN_OUT_BOTTOM_LEFT, 0, 30);
 
@@ -306,10 +342,12 @@ void gfx_settings_create_page(lv_obj_t *previous_screen)
     lv_obj_set_width(trigger_output_dropdown, DROPDOWN_WIDTH);
     lv_obj_align_to(trigger_output_dropdown, trigger_output_label, LV_ALIGN_OUT_RIGHT_MID, 10, 0);
     lv_obj_add_event_cb(trigger_output_dropdown, event_handler, LV_EVENT_VALUE_CHANGED, NULL);
+    gfx_settings_style_dropdown_widget(trigger_output_dropdown);
 
     // Add auto-trigger interval setting
     lv_obj_t *trigger_interval_label = lv_label_create(tab_trigger);
     lv_label_set_text(trigger_interval_label, "Auto-trigger Interval:");
+    gfx_settings_style_label(trigger_interval_label);
     lv_obj_set_width(trigger_interval_label, LABEL_WIDTH);
     lv_obj_align_to(trigger_interval_label, trigger_output_label, LV_ALIGN_OUT_BOTTOM_LEFT, 0, 30);
 
@@ -318,12 +356,14 @@ void gfx_settings_create_page(lv_obj_t *previous_screen)
     lv_obj_set_width(trigger_interval_dropdown, DROPDOWN_WIDTH);
     lv_obj_align_to(trigger_interval_dropdown, trigger_interval_label, LV_ALIGN_OUT_RIGHT_MID, 10, 0);
     lv_obj_add_event_cb(trigger_interval_dropdown, event_handler, LV_EVENT_VALUE_CHANGED, NULL);
+    gfx_settings_style_dropdown_widget(trigger_interval_dropdown);
 
     // Back button
     lv_obj_t *btn_back = lv_btn_create(settings_screen);
     lv_obj_set_size(btn_back, GFX_BTN_WIDTH, GFX_BTN_HEIGHT);
     lv_obj_align(btn_back, LV_ALIGN_BOTTOM_LEFT, 10, -5);
     lv_obj_add_event_cb(btn_back, back_btn_event_handler, LV_EVENT_CLICKED, NULL);
+    xlat_ui_style_button(btn_back, XLAT_UI_COLOR_PANEL_ALT, XLAT_UI_COLOR_ACCENT);
     gfx_btn_enable_press_anim(btn_back);
     lv_obj_t *back_label = lv_label_create(btn_back);
     lv_label_set_text(back_label, "BACK");
@@ -334,6 +374,7 @@ void gfx_settings_create_page(lv_obj_t *previous_screen)
     char version_str[30];
     sprintf(version_str, "XLAT v%s", APP_VERSION_FULL);
     lv_label_set_text(version_label, version_str);
+    gfx_settings_style_info_label(version_label);
     lv_obj_align(version_label, LV_ALIGN_BOTTOM_RIGHT, -10, -10);
 
     // Set initial values
